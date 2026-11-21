@@ -16,6 +16,11 @@ class Settings(BaseSettings):
 
     # Finnhub API key for company news (free tier)
     finnhub_api_key: str
+    
+    # LLM: provider and model come from .env so switching needs no code change
+    llm_provider: str = "gemini"
+    llm_model: str = "gemini-3.5-flash"
+    google_api_key: str | None = None   # required only when llm_provider is "gemini"
 
 
 # One shared instance, created once when the module is first imported
