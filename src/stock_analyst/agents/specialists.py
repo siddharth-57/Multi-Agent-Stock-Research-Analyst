@@ -90,7 +90,7 @@ def make_specialist(name: SpecialistName, tools: list[BaseTool], llm: BaseChatMo
             data={"tool_calls": result.tool_calls},  # raw numbers kept for writer + evaluation
             sources=sorted(collect_sources(result.tool_calls)),
             usage=result.model_dump(
-                include={"rounds", "input_tokens", "output_tokens", "latency_s", "hit_limit"}
+                include={"rounds", "input_tokens", "output_tokens", "latency_s", "hit_limit","models_used"}
             ),
         )
         return {"findings": {name: findings}}

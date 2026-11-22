@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     llm_provider: str = "gemini"
     llm_model: str = "gemini-3.5-flash"
     google_api_key: str | None = None   # required only when llm_provider is "gemini"
+    llm_fallback_model: str | None = "gemini-3.1-flash-lite"  # used if the main model fails    
 
 
 # One shared instance, created once when the module is first imported

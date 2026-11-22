@@ -3,14 +3,15 @@ loop.py: Our own tool-calling agent loop, shared by all specialists.
 
 Asks the LLM, runs any tools it requests (in parallel), sends the results
 back, and repeats until the LLM answers or the round limit is hit. Records
-every tool call plus token usage and latency for the evaluation harness.
+every tool call, token usage, latency and which model answered, for the
+evaluation harness.
 """
 import asyncio
 import json
 import time
 
-from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, ToolMessage
+from langchain_core.runnables import Runnable
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field
 
@@ -26,10 +27,11 @@ class LoopResult(BaseModel):
     output_tokens: int = 0
     latency_s: float = 0.0
     hit_limit: bool = False    # True if the round cap forced the answer
+    models_used: list[str] = Field(default_factory=list)  # shows when the fallback answered
 
 
 async def run_tool_loop(
-    llm: BaseChatModel,
+    llm: Runnable,             # a chat model, possibly wrapped with a fallback
     tools: list[BaseTool],
     messages: list[BaseMessage],
     max_rounds: int = 4,
@@ -41,10 +43,17 @@ async def run_tool_loop(
 
     async def call_llm() -> AIMessage:
         response = await llm_with_tools.ainvoke(messages)
+
         # usage_metadata is LangChain's standard token count; some models omit it
         usage = response.usage_metadata or {}
         result.input_tokens += usage.get("input_tokens", 0)
         result.output_tokens += usage.get("output_tokens", 0)
+
+        # Record which model actually replied (main or fallback)
+        model_name = response.response_metadata.get("model_name")
+        if model_name and model_name not in result.models_used:
+            result.models_used.append(model_name)
+
         messages.append(response)  # the model needs the full history next round
         return response
 

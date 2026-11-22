@@ -6,13 +6,14 @@ which specialists are needed, and what to focus on. The LLM's ticker is
 then checked against SEC's official list, so a made-up ticker stops the
 run early instead of producing a report about nothing.
 """
+import logging
+
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from stock_analyst.agents.state import Plan, ResearchState
 from stock_analyst.data.edgar import EdgarClient
 from stock_analyst.llm import get_llm
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +45,7 @@ def make_planner(edgar: EdgarClient, llm: BaseChatModel | None = None):
                 [SystemMessage(SYSTEM_PROMPT), HumanMessage(state["question"])]
             )
         # LLM outage or rate limit: record it so the graph can stop cleanly
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             logger.exception("planner failed")
             return {"errors": [f"planner: {e}"]}
 
