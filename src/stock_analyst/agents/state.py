@@ -31,6 +31,7 @@ class SpecialistFindings(BaseModel):
     summary: str                                      # short written takeaway
     data: dict = Field(default_factory=dict)          # raw tool outputs (the real numbers)
     sources: list[str] = Field(default_factory=list)  # URLs backing the findings
+    usage: dict = Field(default_factory=dict)         # rounds, tokens, latency (for evaluation)    
 
 
 class Review(BaseModel):
