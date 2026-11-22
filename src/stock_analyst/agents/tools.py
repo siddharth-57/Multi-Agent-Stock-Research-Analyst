@@ -42,6 +42,19 @@ def pct(x: float | None) -> float | None:
     """0.2762 -> 27.62, so the LLM can quote percentages without doing math."""
     return round(x * 100, 2) if x is not None else None
 
+def human_number(value: float, unit: str) -> str:
+    """478834000000 USD -> '$478.83B', so the LLM never reformats big numbers itself."""
+    sign = "-" if value < 0 else ""
+    value = abs(value)
+    if unit == "USD":
+        for size, suffix in ((1e12, "T"), (1e9, "B"), (1e6, "M")):
+            if value >= size:
+                return f"{sign}${value / size:,.2f}{suffix}"
+        return f"{sign}${value:,.2f}"
+    if unit == "USD/shares":
+        return f"{sign}${value:.2f} per share"
+    return f"{sign}{value:,.0f} {unit}"
+
 
 def calculate_ratios(facts: dict[str, list[FinancialFact]], price: float | None) -> dict:
     """Pure function: compute key ratios from the latest annual figures."""
@@ -94,6 +107,7 @@ def make_tools(edgar: EdgarClient, news: FinnhubClient) -> dict[str, list[BaseTo
                 facts = await edgar.get_annual_metric(ticker, metric, years=years)
                 result[metric] = [
                     {"fiscal_year_end": str(f.period_end), "value": f.value,
+                     "display": human_number(f.value, f.unit),
                      "unit": f.unit, "source": f.source_url}
                     for f in facts
                 ]
@@ -109,8 +123,11 @@ def make_tools(edgar: EdgarClient, news: FinnhubClient) -> dict[str, list[BaseTo
         All math is done in code. Use this instead of calculating ratios yourself."""
         try:
             facts = {m: await edgar.get_annual_metric(ticker, m, years=2) for m in RATIO_INPUTS}
-            price = (await fetch_price_summary(ticker, "1mo")).latest_close
-            return {"ticker": ticker.upper(), **calculate_ratios(facts, price)}
+            prices = await fetch_price_summary(ticker, "1mo")
+            ratios = calculate_ratios(facts, prices.latest_close)
+            # P/E also uses the stock price, so the price source is cited too
+            ratios["sources"].append(prices.source_url)
+            return {"ticker": ticker.upper(), **ratios}
         
         # Tool boundary: catch everything so the agent survives; traceback is logged
         except Exception as e:  # noqa: BLE001

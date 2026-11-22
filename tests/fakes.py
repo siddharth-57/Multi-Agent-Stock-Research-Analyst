@@ -35,3 +35,14 @@ class ScriptedLLM:
         reply = self.replies[min(self.calls, len(self.replies) - 1)]
         self.calls += 1
         return reply
+
+class FixedOutputLLM:
+    """Fake model for structured output: always returns the object it was given."""
+    def __init__(self, output):
+        self.output = output
+
+    def with_structured_output(self, schema):
+        return self
+
+    async def ainvoke(self, messages):
+        return self.output

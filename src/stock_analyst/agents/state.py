@@ -39,6 +39,27 @@ class Review(BaseModel):
     approved: bool
     issues: list[str] = Field(default_factory=list)
 
+class KeyFigure(BaseModel):
+    """One headline number in the report, tied to the source it came from."""
+    label: str = Field(description="What the number is, with its period, e.g. 'Net margin (FY2026)'")
+    value: str = Field(description="The value exactly as it appears in the tool data, e.g. '27.6%'")
+    source_id: str = Field(description="ID of the source this value came from, e.g. 'S1'")
+
+
+class ReportSection(BaseModel):
+    heading: str
+    body: str = Field(description="Markdown text. Cite sources inline like [S1].")
+
+
+class Report(BaseModel):
+    """Writer output. Code renders it to markdown and adds the real source links."""
+    title: str
+    summary: str = Field(description="2-3 sentences that directly answer the user's question")
+    key_figures: list[KeyFigure]
+    sections: list[ReportSection] = Field(description="2 to 4 sections")
+    risks: list[str] = Field(description="Main risks or caveats, each citing a source like [S1] when possible")
+    data_gaps: list[str] = Field(default_factory=list, description="Data that was missing or failed to load")
+
 
 def merge_dicts(left: dict | None, right: dict | None) -> dict:
     """Reducer: each parallel specialist adds its own key instead of overwriting others."""
@@ -52,7 +73,7 @@ class ResearchState(TypedDict, total=False):
     # Annotated[type, reducer] tells LangGraph how to combine parallel updates
     findings: Annotated[dict[str, SpecialistFindings], merge_dicts]
     errors: Annotated[list[str], operator.add]   # lists from parallel nodes are concatenated
-
-    draft: str                # set by the writer
+    report: Report            # structured report from the writer
+    draft: str                # the same report rendered as markdown
     review: Review            # set by the reviewer
     revision_count: int       # caps the writer/reviewer loop

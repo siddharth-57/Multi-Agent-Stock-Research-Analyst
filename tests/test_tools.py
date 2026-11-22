@@ -10,7 +10,12 @@ from typing import get_args
 
 import httpx
 
-from stock_analyst.agents.tools import MetricName, calculate_ratios, make_tools
+from stock_analyst.agents.tools import (
+    MetricName,
+    calculate_ratios,
+    human_number,
+    make_tools,
+)
 from stock_analyst.data.edgar import METRIC_CONCEPTS, EdgarClient
 from stock_analyst.data.models import FinancialFact
 from stock_analyst.data.news import FinnhubClient
@@ -53,6 +58,11 @@ def test_negative_eps_gives_no_pe():
     r = calculate_ratios({"eps_diluted": [fact("eps_diluted", -1.5)]}, price=40)
     assert r["pe_ratio"] is None
 
+def test_human_number_formats():
+    assert human_number(478_834_000_000, "USD") == "$478.83B"
+    assert human_number(-1_500_000_000, "USD") == "-$1.50B"
+    assert human_number(8.98, "USD/shares") == "$8.98 per share"
+
 
 def test_figures_from_different_years_are_not_divided():
     facts = {
@@ -73,3 +83,4 @@ async def test_tool_returns_error_instead_of_raising():
     await news.close()
 
     assert "error" in result
+
